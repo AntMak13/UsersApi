@@ -1,41 +1,57 @@
+using UsersApi.Models;
+using UsersApi.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Регистрируем контроллеры
+builder.Services.AddControllers();
+
+// добавялем Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Регистрируем UserService как Singleton
+// Singleton — потому что мы храним пользователей "в памяти", один сервис на всё приложение.
+// TO-DO: Почитать про Singleton 
+builder.Services.AddSingleton<IUserService, UserService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// app.UseAuthentication();
+app.MapControllers();
+SeedAdminUser(app.Services);
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+void SeedAdminUser(IServiceProvider services)
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    var userService = services.GetRequiredService<IUserService>();
+
+    // Проверяем, есть ли Admin
+    if (!userService.GetAll().Any(u => u.Login == "admin"))
+    {
+        userService.Create(new UserModel
+        {
+            Guid = 1,
+            Login = "admin",
+            Password =  "admin",
+            Name = "Nick",
+            Gender = 1,
+            Birthday = DateTime.Today,
+            Admin =  true,
+            CreatedOn =  DateTime.Now,
+            CreatedBy = "admin",
+            ModifiedOn =  DateTime.Now,
+            ModifiedBy = "admin", 
+            RevokedOn = DateTime.Now,
+            RevokedBy =  "admin"
+        });
+    }
 }
